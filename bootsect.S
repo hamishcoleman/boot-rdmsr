@@ -12,7 +12,6 @@
 
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
 INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */
-SYSSEG		= DEF_SYSSEG		/* system loaded at 0x10000 (65536) */
 
 .code16
 .text
@@ -139,7 +138,7 @@ no_cyl_crossing:
 	subb	%al, setup_sects	# rest - for next step
 	jnz	next_step
 
-	pushw	$SYSSEG
+	pushw	0			# was $SYSSEG
 	popw	%es			# %es = SYSSEG
 	call	read_it
 	call	kill_motor
@@ -197,7 +196,7 @@ die:	jne	die			# %es must be at 64kB boundary
 	xorw	%bx, %bx		# %bx is starting address within segment
 rp_read:
 	movw	%es, %ax
-	subw	$SYSSEG, %ax
+	subw	0, %ax		# was $SYSSEG
 	movw	%bx, %cx
 	shr	$4, %cx
 	add	%cx, %ax		# check offset
