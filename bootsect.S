@@ -1,32 +1,11 @@
 /*
+ * originally taken from linux 2.4 kernel source
  *	bootsect.S		Copyright (C) 1991, 1992 Linus Torvalds
  *
  *	modified by Drew Eckhardt
  *	modified by Bruce Evans (bde)
  *	modified by Chris Noe (May 1999) (as86 -> gas)
  *
- * 360k/720k disk support: Andrzej Krzysztofowicz <ankry@green.mif.pg.gda.pl>
- *
- * BIG FAT NOTE: We're in real mode using 64k segments.  Therefore segment
- * addresses must be multiplied by 16 to obtain their respective linear
- * addresses. To avoid confusion, linear addresses are written using leading
- * hex while segment addresses are written as segment:offset.
- *
- * bde - should not jump blindly, there may be systems with only 512K low
- * memory.  Use int 0x12 to get the top of memory, etc.
- *
- * It then loads 'setup' directly after itself (0x90200), and the system
- * at 0x10000, using BIOS interrupts. 
- *
- * NOTE! currently system is at most (8*65536-4096) bytes long. This should 
- * be no problem, even in the future. I want to keep it simple. This 508 kB
- * kernel size should be enough, especially as this doesn't contain the
- * buffer cache as in minix (and especially now that the kernel is 
- * compressed :-)
- *
- * The loader has been made as simple as possible, and continuous
- * read errors will result in a unbreakable loop. Reboot by hand. It
- * loads pretty fast by getting whole tracks at a time whenever possible.
  */
 
 #include <asm/boot.h>
