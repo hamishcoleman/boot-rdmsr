@@ -82,18 +82,6 @@ here:
 	jmp	here
 
 
-# print_all is for debugging purposes.  
-#
-# it will print out all of the registers.  The assumption is that this is
-# called from a routine, with a stack frame like
-#
-#	%dx 
-#	%cx
-#	%bx
-#	%ax
-#	(error)
-#	ret <- %sp
-
 print_regs:
 	pushl	%edx 
 	pushl	%ecx
@@ -104,8 +92,9 @@ print_regs:
 
 print_regs1:
 	pushw	%cx			# save count remaining
-	call	print_nl		# <-- for readability
 	
+	movw	$0xe20, %ax
+	int	$0x10
 	movw	$0xe05 + 'A' - 1, %ax
 	subb	%cl, %al
 	int	$0x10
@@ -137,6 +126,18 @@ print_ldigit:
 	loop	print_ldigit
 	ret
 
+
+# print_all is for debugging purposes.  
+#
+# it will print out all of the registers.  The assumption is that this is
+# called from a routine, with a stack frame like
+#
+#	%dx 
+#	%cx
+#	%bx
+#	%ax
+#	(error)
+#	ret <- %sp
 
 print_all:
 	movw	$5, %cx			# error code + 4 registers
