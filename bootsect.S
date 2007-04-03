@@ -71,7 +71,24 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 	movw	$cpuid0, %si
 	call	msg
 
+	movl	$0,%eax
 	cpuid
+	call	print_regs
+
+# perform cpuid 1
+	movw	$cpuid1, %si
+	call	msg
+
+	movl	$1,%eax
+	cpuid
+	call	print_regs
+
+# perform rdmsr 1
+	movw	$rdmsr3a, %si
+	call	msg
+
+	movl	$0x3a,%ecx
+	rdmsr
 	call	print_regs
 
 # Do the test 
@@ -106,13 +123,13 @@ print_regs1:
 	movb	$':', %al
 	int	$0x10
 
-	addw	$4, %bp			# next register
 	call	print_long		# print it
 
 	movw	$0xe20, %ax
 	int	$0x10
 	call	print_lstr		# print the ascii rendition
 
+	addw	$4, %bp			# next register
 	popw	%cx
 	loop	print_regs1
 	
@@ -140,8 +157,13 @@ print_lstr:
 	movl	(%bp), %edx		# load word into %edx
 print_lstr1:
 	roll	$8, %edx		# rotate to use low 8 bits
-	movb	$0xe, %ah		# %ah = request
-	movb	%dl, %al		# %al = mask for nybble
+	movw	$0xe00, %ax		# %ah = request
+	cmpb	$0x20,%dl
+	jl	print_lstrc
+	cmpb	$0x7e,%dl
+	jg	print_lstrc
+	movb	%dl, %al
+print_lstrc:	
 	int	$0x10
 	loop	print_lstr1
 	ret
@@ -167,9 +189,11 @@ now:
 check:		.ascii "Check.."
 		.byte 13, 10,0
 
-cpuid0:		.ascii "CPUID0:"
+cpuid0:		.ascii "CPUID.0:"
 		.byte 13,10,0
-cpuid1:		.ascii "CPUID1:"
+cpuid1:		.ascii "CPUID.1:"
+		.byte 13,10,0
+rdmsr3a:	.ascii "RDMSR.3A:"
 		.byte 13,10,0
 
 .org 497
