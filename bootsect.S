@@ -10,10 +10,8 @@
 
 #include <asm/boot.h>
 
-SETUPSECTS	= 4			/* default nr of setup-sectors */
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
 INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */
-SETUPSEG	= DEF_SETUPSEG		/* setup starts here */
 SYSSEG		= DEF_SYSSEG		/* system loaded at 0x10000 (65536) */
 SYSSIZE		= DEF_SYSSIZE		/* system size: # of 16-byte clicks */
 					/* to be loaded */
@@ -186,10 +184,11 @@ no_cyl_crossing:
 root_defined:
 	movw	%ax, root_dev
 
-# After that (everything loaded), we jump to the setup-routine
-# loaded directly after the bootblock:
+# After that we effectively halt the system
 
-	ljmp	$SETUPSEG, $0
+here:
+	hlt
+	jmp	here
 
 # These variables are addressed via %si register as it gives shorter code.
 
@@ -376,7 +375,7 @@ msg1:		.byte 13, 10
 # XXX: This is a fairly snug fit.
 
 .org 497
-setup_sects:	.byte SETUPSECTS
+setup_sects:	.byte 0
 root_flags:	.word ROOT_RDONLY
 syssize:	.word SYSSIZE
 swap_dev:	.word SWAP_DEV
