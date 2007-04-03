@@ -74,10 +74,6 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 #	movw	$0x3a,%cx
 #	rdmsr
 
-	pushl	%edx 
-	pushl	%ecx
-	pushl	%ebx
-	pushl	%eax
 	call	print_regs
 
 # After that we effectively halt the system
@@ -99,8 +95,13 @@ here:
 #	ret <- %sp
 
 print_regs:
+	pushl	%edx 
+	pushl	%ecx
+	pushl	%ebx
+	pushl	%eax
 	movw	$4, %cx			# 4 longwords to print
 	movw	%sp, %bp
+
 print_regs1:
 	pushw	%cx			# save count remaining
 	call	print_nl		# <-- for readability
@@ -117,6 +118,8 @@ print_regs1:
 	call	print_long		# print it
 	popw	%cx
 	loop	print_regs1
+	
+	addw	$4 * 4, %sp
 	ret
 
 print_long:
