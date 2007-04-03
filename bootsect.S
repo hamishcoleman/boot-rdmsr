@@ -13,16 +13,6 @@
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
 INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */
 SYSSEG		= DEF_SYSSEG		/* system loaded at 0x10000 (65536) */
-SYSSIZE		= DEF_SYSSIZE		/* system size: # of 16-byte clicks */
-					/* to be loaded */
-ROOT_DEV	= 0 			/* ROOT_DEV is now written by "build" */
-SWAP_DEV	= 0			/* SWAP_DEV is now written by "build" */
-
-#define SVGA_MODE ASK_VGA
-
-#define RAMDISK 0
-
-#define ROOT_RDONLY 1
 
 .code16
 .text
@@ -376,10 +366,10 @@ msg1:		.byte 13, 10
 
 .org 497
 setup_sects:	.byte 0
-root_flags:	.word ROOT_RDONLY
-syssize:	.word SYSSIZE
-swap_dev:	.word SWAP_DEV
-ram_size:	.word RAMDISK
-vid_mode:	.word SVGA_MODE
-root_dev:	.word ROOT_DEV
+root_flags:	.word 0
+syssize:	.word 0
+swap_dev:	.word 0
+ram_size:	.word 0
+vid_mode:	.word 0
+root_dev:	.word 0
 boot_flag:	.word 0xAA55
