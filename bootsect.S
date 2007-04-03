@@ -62,22 +62,23 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 
 	call	print_nl
 
-	xor	%ax,%ax
-	xor	%bx,%bx
-	xor	%cx,%cx
-	xor	%dx,%dx
+# clear registers ...
+	xorl	%eax,%eax
+	xorl	%ebx,%ebx
+	xorl	%ecx,%ecx
+	xorl	%edx,%edx
+
+	cpuid
 
 # Do the test 
-	movw	$0x3a,%cx
-	rdmsr
+#	movw	$0x3a,%cx
+#	rdmsr
 
-# Print the registers
-	push	%dx 
-	push	%cx
-	push	%bx
-	push	%ax
-	push	$0
-	call	print_all
+	pushl	%edx 
+	pushl	%ecx
+	pushl	%ebx
+	pushl	%eax
+	call	print_regs
 
 # After that we effectively halt the system
 here:
@@ -96,7 +97,44 @@ here:
 #	%ax
 #	(error)
 #	ret <- %sp
- 
+
+print_regs:
+	movw	$4, %cx			# 4 longwords to print
+	movw	%sp, %bp
+print_regs1:
+	pushw	%cx			# save count remaining
+	call	print_nl		# <-- for readability
+	
+	movw	$0xe05 + 'A' - 1, %ax
+	subb	%cl, %al
+	int	$0x10
+	movb	$'X', %al
+	int	$0x10
+	movb	$':', %al
+	int	$0x10
+
+	addw	$4, %bp			# next register
+	call	print_long		# print it
+	popw	%cx
+	loop	print_regs1
+	ret
+
+print_long:
+	movw	$8, %cx			# 8 hex digits
+	movl	(%bp), %edx		# load word into %edx
+print_ldigit:
+	roll	$4, %edx		# rotate to use low 4 bits
+	movw	$0xe0f, %ax		# %ah = request
+	andb	%dl, %al		# %al = mask for nybble
+	addb	$0x90, %al		# convert %al to ascii hex
+	daa				# in only four instructions!
+	adc	$0x40, %al
+	daa
+	int	$0x10
+	loop	print_ldigit
+	ret
+
+
 print_all:
 	movw	$5, %cx			# error code + 4 registers
 	movw	%sp, %bp
