@@ -20,17 +20,11 @@ SYSSIZE		= DEF_SYSSIZE		/* system size: # of 16-byte clicks */
 ROOT_DEV	= 0 			/* ROOT_DEV is now written by "build" */
 SWAP_DEV	= 0			/* SWAP_DEV is now written by "build" */
 
-#ifndef SVGA_MODE
 #define SVGA_MODE ASK_VGA
-#endif
 
-#ifndef RAMDISK
 #define RAMDISK 0
-#endif
 
-#ifndef ROOT_RDONLY
 #define ROOT_RDONLY 1
-#endif
 
 .code16
 .text
@@ -213,17 +207,11 @@ read_it:
 die:	jne	die			# %es must be at 64kB boundary
 	xorw	%bx, %bx		# %bx is starting address within segment
 rp_read:
-#ifdef __BIG_KERNEL__
-					# look in setup.S for bootsect_kludge
-	bootsect_kludge = 0x220		# 0x200 + 0x20 which is the size of the
-	lcall	bootsect_kludge		# bootsector + bootsect_kludge offset
-#else
 	movw	%es, %ax
 	subw	$SYSSEG, %ax
 	movw	%bx, %cx
 	shr	$4, %cx
 	add	%cx, %ax		# check offset
-#endif
 	cmpw	syssize, %ax		# have we loaded everything yet?
 	jbe	ok1_read
 
@@ -375,15 +363,9 @@ print_digit:
 # NOTE: Doesn't save %ax or %dx; do it yourself if you need to.
 
 kill_motor:
-#if 1
 	xorw	%ax, %ax		# reset FDC
 	xorb	%dl, %dl
 	int	$0x13
-#else
-	movw	$0x3f2, %dx
-	xorb	%al, %al
-	outb	%al, %dx
-#endif
 	ret
 
 sectors:	.word 0
