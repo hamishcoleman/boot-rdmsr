@@ -49,29 +49,6 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 
 	movw	%cx, 0
 
-# Get disk drive parameters, specifically number of sectors/track.
-
-# It seems that there is no BIOS call to get the number of sectors.
-# Guess 36 sectors if sector 36 can be read, 18 sectors if sector 18
-# can be read, 15 if sector 15 can be read.  Otherwise guess 9.
-# Note that %cx = 0 from rep movsw above.
-
-	movw	$disksizes, %si		# table of sizes to try
-probe_loop:
-	lodsb
-	cbtw				# extend to word
-	movw	%ax, sectors
-	cmpw	$disksizes+4, %si
-	jae	got_sectors		# If all else fails, try 9
-
-	xchgw	%cx, %ax		# %cx = track and sector
-	xorw	%dx, %dx		# drive 0, head 0
-	movw	$0x0200, %bx		# address = 512, in INITSEG (%es = %cs)
-	movw	$0x0201, %ax		# service 2, 1 sector
-	int	$0x13
-	jc	probe_loop		# try next value
-
-got_sectors:
 	movb	$0x03, %ah		# read cursor pos
 	xorb	%bh, %bh
 	int	$0x10
@@ -83,180 +60,30 @@ got_sectors:
 	movw	$0x1301, %ax		# write string, move cursor
 	int	$0x10			# tell the user we're loading..
 
-# Load the setup-sectors directly after the moved bootblock (at 0x90200).
-# We should know the drive geometry to do it, as setup may exceed first
-# cylinder (for 9-sector 360K and 720K floppies).
-
-	movw	$0x0001, %ax		# set sread (sector-to-read) to 1 as
-	movw	$sread, %si		# the boot sector has already been read
-	movw	%ax, (%si)
-
-	xorw	%ax, %ax		# reset FDC
-	xorb	%dl, %dl
-	int	$0x13
-	movw	$0x0200, %bx		# address = 512, in INITSEG
-next_step:
-	movb	setup_sects, %al
-	movw	sectors, %cx
-	subw	(%si), %cx		# (%si) = sread
-	cmpb	%cl, %al
-	jbe	no_cyl_crossing
-	movw	sectors, %ax
-	subw	(%si), %ax		# (%si) = sread
-no_cyl_crossing:
-	call	read_track
-	pushw	%ax			# save it
-	call	set_next		# set %bx properly; it uses %ax,%cx,%dx
-	popw	%ax			# restore
-	subb	%al, setup_sects	# rest - for next step
-	jnz	next_step
-
-	pushw	0			# was $SYSSEG
-	popw	%es			# %es = SYSSEG
-	call	read_it
-	call	kill_motor
 	call	print_nl
 
-# After that we check which root-device to use. If the device is
-# defined (!= 0), nothing is done and the given device is used.
-# Otherwise, one of /dev/fd0H2880 (2,32) or /dev/PS0 (2,28) or /dev/at0 (2,8)
-# depending on the number of sectors we pretend to know we have.
+	xor	%ax,%ax
+	xor	%bx,%bx
+	xor	%cx,%cx
+	xor	%dx,%dx
 
-# Segments are as follows: %cs = %ds = %ss = INITSEG,
-#	%es = SYSSEG, %fs = 0, %gs is unused.
+# Do the test 
+	movw	$0x3a,%cx
+	rdmsr
 
-	movw	root_dev, %ax
-	orw	%ax, %ax
-	jne	root_defined
-
-	movw	sectors, %bx
-	movw	$0x0208, %ax		# /dev/ps0 - 1.2Mb
-	cmpw	$15, %bx
-	je	root_defined
-
-	movb	$0x1c, %al		# /dev/PS0 - 1.44Mb
-	cmpw	$18, %bx
-	je	root_defined
-
-	movb	$0x20, %al		# /dev/fd0H2880 - 2.88Mb
-	cmpw	$36, %bx
-	je	root_defined
-
-	movb	$0, %al			# /dev/fd0 - autodetect
-root_defined:
-	movw	%ax, root_dev
+# Print the registers
+	push	%dx 
+	push	%cx
+	push	%bx
+	push	%ax
+	push	$0
+	call	print_all
 
 # After that we effectively halt the system
-
 here:
 	hlt
 	jmp	here
 
-# These variables are addressed via %si register as it gives shorter code.
-
-sread:	.word 0				# sectors read of current track
-head:	.word 0				# current head
-track:	.word 0				# current track
-
-# This routine loads the system at address SYSSEG, making sure
-# no 64kB boundaries are crossed. We try to load it as fast as
-# possible, loading whole tracks whenever we can.
-
-read_it:
-	movw	%es, %ax		# %es = SYSSEG when called
-	testw	$0x0fff, %ax
-die:	jne	die			# %es must be at 64kB boundary
-	xorw	%bx, %bx		# %bx is starting address within segment
-rp_read:
-	movw	%es, %ax
-	subw	0, %ax		# was $SYSSEG
-	movw	%bx, %cx
-	shr	$4, %cx
-	add	%cx, %ax		# check offset
-	cmpw	syssize, %ax		# have we loaded everything yet?
-	jbe	ok1_read
-
-	ret
-
-ok1_read:
-	movw	sectors, %ax
-	subw	(%si), %ax		# (%si) = sread
-	movw	%ax, %cx
-	shlw	$9, %cx
-	addw	%bx, %cx
-	jnc	ok2_read
-
-	je	ok2_read
-
-	xorw	%ax, %ax
-	subw	%bx, %ax
-	shrw	$9, %ax
-ok2_read:
-	call	read_track
-	call	set_next
-	jmp	rp_read
-
-read_track:
-	pusha
-	pusha	
-	movw	$0xe2e, %ax 		# loading... message 2e = .
-	movw	$7, %bx
- 	int	$0x10
-	popa		
-
-# Accessing head, track, sread via %si gives shorter code.
-
-	movw	4(%si), %dx		# 4(%si) = track
-	movw	(%si), %cx		# (%si)  = sread
-	incw	%cx
-	movb	%dl, %ch
-	movw	2(%si), %dx		# 2(%si) = head
-	movb	%dl, %dh
-	andw	$0x0100, %dx
-	movb	$2, %ah
-	pushw	%dx			# save for error dump
-	pushw	%cx
-	pushw	%bx
-	pushw	%ax
-	int	$0x13
-	jc	bad_rt
-
-	addw	$8, %sp
-	popa
-	ret
-
-set_next:
-	movw	%ax, %cx
-	addw	(%si), %ax		# (%si) = sread
-	cmp	sectors, %ax
-	jne	ok3_set
-	movw	$0x0001, %ax
-	xorw	%ax, 2(%si)		# change head
-	jne	ok4_set
-	incw	4(%si)			# next track
-ok4_set:
-	xorw	%ax, %ax
-ok3_set:
-	movw	%ax, (%si)		# set sread
-	shlw	$9, %cx
-	addw	%cx, %bx
-	jnc	set_next_fin
-	movw	%es, %ax
-	addb	$0x10, %ah
-	movw	%ax, %es
-	xorw	%bx, %bx
-set_next_fin:
-	ret
-
-bad_rt:
-	pushw	%ax			# save error code
-	call	print_all		# %ah = error, %al = read
-	xorb	%ah, %ah
-	xorb	%dl, %dl
-	int	$0x13
-	addw	$10, %sp
-	popa
-	jmp read_track
 
 # print_all is for debugging purposes.  
 #
@@ -318,23 +145,8 @@ print_digit:
 	loop	print_digit
 	ret
 
-# This procedure turns off the floppy drive motor, so
-# that we enter the kernel in a known state, and
-# don't have to worry about it later.
-# NOTE: Doesn't save %ax or %dx; do it yourself if you need to.
-
-kill_motor:
-	xorw	%ax, %ax		# reset FDC
-	xorb	%dl, %dl
-	int	$0x13
-	ret
-
-sectors:	.word 0
-disksizes:	.byte 36, 18, 15, 9
 msg1:		.byte 13, 10
-		.ascii "Loading"
-
-# XXX: This is a fairly snug fit.
+		.ascii "Check.."
 
 .org 497
 setup_sects:	.byte 0
