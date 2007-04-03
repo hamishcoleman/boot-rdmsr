@@ -56,25 +56,28 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 	movb	$0x07, %bl		# page 0, attribute 7 (normal)
 					# %bh is set above; int10 doesn't
 					# modify it
-	movw	$msg1, %bp
-	movw	$0x1301, %ax		# write string, move cursor
-	int	$0x10			# tell the user we're loading..
+	movw	$check, %si
+	call	msg
 
 	call	print_nl
 
-# clear registers ...
+# clear registers before testing
 	xorl	%eax,%eax
 	xorl	%ebx,%ebx
 	xorl	%ecx,%ecx
 	xorl	%edx,%edx
 
+# perform cpuid 0
+	movw	$cpuid0, %si
+	call	msg
+
 	cpuid
+	call	print_regs
 
 # Do the test 
 #	movw	$0x3a,%cx
 #	rdmsr
 
-	call	print_regs
 
 # After that we effectively halt the system
 here:
@@ -105,10 +108,16 @@ print_regs1:
 
 	addw	$4, %bp			# next register
 	call	print_long		# print it
+
+	movw	$0xe20, %ax
+	int	$0x10
+	call	print_lstr		# print the ascii rendition
+
 	popw	%cx
 	loop	print_regs1
 	
 	addw	$4 * 4, %sp
+	call	print_nl
 	ret
 
 print_long:
@@ -126,40 +135,15 @@ print_ldigit:
 	loop	print_ldigit
 	ret
 
-
-# print_all is for debugging purposes.  
-#
-# it will print out all of the registers.  The assumption is that this is
-# called from a routine, with a stack frame like
-#
-#	%dx 
-#	%cx
-#	%bx
-#	%ax
-#	(error)
-#	ret <- %sp
-
-print_all:
-	movw	$5, %cx			# error code + 4 registers
-	movw	%sp, %bp
-print_loop:
-	pushw	%cx			# save count remaining
-	call	print_nl		# <-- for readability
-	cmpb	$5, %cl
-	jae	no_reg			# see if register name is needed
-	
-	movw	$0xe05 + 'A' - 1, %ax
-	subb	%cl, %al
+print_lstr:
+	movw	$4, %cx			# 4 characters
+	movl	(%bp), %edx		# load word into %edx
+print_lstr1:
+	roll	$8, %edx		# rotate to use low 8 bits
+	movb	$0xe, %ah		# %ah = request
+	movb	%dl, %al		# %al = mask for nybble
 	int	$0x10
-	movb	$'X', %al
-	int	$0x10
-	movb	$':', %al
-	int	$0x10
-no_reg:
-	addw	$2, %bp			# next register
-	call	print_hex		# print it
-	popw	%cx
-	loop	print_loop
+	loop	print_lstr1
 	ret
 
 print_nl:
@@ -169,26 +153,24 @@ print_nl:
 	int 	$0x10
 	ret
 
-# print_hex is for debugging purposes, and prints the word
-# pointed to by %ss:%bp in hexadecimal.
-
-print_hex:
-	movw	$4, %cx			# 4 hex digits
-	movw	(%bp), %dx		# load word into %dx
-print_digit:
-	rolw	$4, %dx			# rotate to use low 4 bits
-	movw	$0xe0f, %ax		# %ah = request
-	andb	%dl, %al		# %al = mask for nybble
-	addb	$0x90, %al		# convert %al to ascii hex
-	daa				# in only four instructions!
-	adc	$0x40, %al
-	daa
+msg:
+	lodsb
+	and	%al,%al
+	jz	now
+	movb	$0x0e,%ah
+	movb	$0x07,%bl
 	int	$0x10
-	loop	print_digit
+	jmp	msg
+now:
 	ret
 
-msg1:		.byte 13, 10
-		.ascii "Check.."
+check:		.ascii "Check.."
+		.byte 13, 10,0
+
+cpuid0:		.ascii "CPUID0:"
+		.byte 13,10,0
+cpuid1:		.ascii "CPUID1:"
+		.byte 13,10,0
 
 .org 497
 setup_sects:	.byte 0
