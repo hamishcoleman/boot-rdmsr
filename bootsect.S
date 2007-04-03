@@ -47,34 +47,7 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 	movw	%ax, %ss
 	movw	%di, %sp		# put stack at INITSEG:0x4000-12.
 
-# Many BIOS's default disk parameter tables will not recognize
-# multi-sector reads beyond the maximum sector number specified
-# in the default diskette parameter tables - this may mean 7
-# sectors in some cases.
-#
-# Since single sector reads are slow and out of the question,
-# we must take care of this by creating new parameter tables
-# (for the first disk) in RAM.  We will set the maximum sector
-# count to 36 - the most we will encounter on an ED 2.88.  
-#
-# High doesn't hurt.  Low does.
-#
-# Segments are as follows: %cs = %ds = %es = %ss = INITSEG, %fs = 0,
-# and %gs is unused.
-
-	movw	%cx, %fs		# %fs = 0
-	movw	$0x78, %bx		# %fs:%bx is parameter table address
-	pushw	%ds
-	ldsw	%fs:(%bx), %si		# %ds:%si is source
-	movb	$6, %cl			# copy 12 bytes
-	pushw	%di			# %di = 0x4000-12.
-	rep				# don't worry about cld
-	movsw				# already done above
-	popw	%di
-	popw	%ds
-	movb	$36, 0x4(%di)		# patch sector count
-	movw	%di, %fs:(%bx)
-	movw	%es, %fs:2(%bx)
+	movw	%cx, 0
 
 # Get disk drive parameters, specifically number of sectors/track.
 
