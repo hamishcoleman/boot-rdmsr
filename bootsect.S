@@ -56,7 +56,7 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 	movb	$0x07, %bl		# page 0, attribute 7 (normal)
 					# %bh is set above; int10 doesn't
 					# modify it
-	movw	$check, %si
+	movw	$help, %si
 	call	msg
 
 	call	print_nl
@@ -95,6 +95,12 @@ go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 #	movw	$0x3a,%cx
 #	rdmsr
 
+
+	call	print_nl
+
+# try to exit (this works if we are a .com or a .cbt)
+	movb	$0x4c,%ah
+	int	$0x21
 
 # After that we effectively halt the system
 here:
@@ -186,7 +192,12 @@ msg:
 now:
 	ret
 
-check:		.ascii "Check.."
+help:		.byte 13,10
+		.ascii "Check CPU VMX Features\r\n\n" \
+			"CPUID.1:ECX.VMX[bit5] == 1 if VMX is supported\r\n" \
+			"RDMSR.3a:EAX.lock[bit0] == 1 if MSR is locked\r\n" \
+			"RDMSR.3a:EAX.enab[bit2] == 1 if VMX is enabled\r\n" \
+
 		.byte 13, 10,0
 
 cpuid0:		.ascii "CPUID.0:"
