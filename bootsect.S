@@ -21,9 +21,25 @@ INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */
 
 .global _start
 _start:
+	movw	%cs,%ax
+	movw	%ax,%ss			# ensure we have a valid stack seg
+	movw	$0x2000,%sp		# ensure room for stack
+	call	testip
+testip:
+	pop	%ax			# %ax = %ip = testip
+	cmpw	$0x100,%ax		
+	jl	move			# running as a bootsector
+	cmpw	$0x200,%ax
+	jg	move			# also running as a bootsector
+	movw	%cs,%ax
+	addw	$0x10,%ax
+	pushw	%ax			# cs
+	pushw	$gocom			# ip
+	cld
+	lret				# running as a com file
 
 # First things first. Move ourself from 0x7C00 -> 0x90000 and jump there.
-
+move:
 	movw	$BOOTSEG, %ax
 	movw	%ax, %ds		# %ds = BOOTSEG
 	movw	$INITSEG, %ax
@@ -42,15 +58,18 @@ _start:
 # instead of in the vector table.  The old stack might have clobbered the
 # drive table.
 
+gocom:
 go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 					# length of bootsect + length of
 					# setup + room for stack;
 					# 12 is disk parm size.
-	movw	%ax, %ds		# %ax and %es already contain INITSEG
+
+	movw	%ax, %ds
+	movw	%ax, %es
 	movw	%ax, %ss
 	movw	%di, %sp		# put stack at INITSEG:0x4000-12.
 
-	movw	%cx, 0
+#	movw	%cx, 0
 
 	movb	$0x03, %ah		# read cursor pos
 	xorb	%bh, %bh
@@ -210,12 +229,5 @@ cpuid1:		.ascii "CPUID.1:"
 rdmsr3a:	.ascii "RDMSR.3A:"
 		.byte 13,10,0
 
-.org 497
-setup_sects:	.byte 0
-root_flags:	.word 0
-syssize:	.word 0
-swap_dev:	.word 0
-ram_size:	.word 0
-vid_mode:	.word 0
-root_dev:	.word 0
+.org 510
 boot_flag:	.word 0xAA55
