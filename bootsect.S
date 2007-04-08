@@ -8,6 +8,9 @@
  *
  */
 
+# TODO - 
+#	adjust to work in both COM and BOOT formats
+
 #include <asm/boot.h>
 
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
