@@ -21,22 +21,20 @@ INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */
 
 .global _start
 _start:
+	cld
 	movw	%cs,%ax
 	movw	%ax,%ss			# ensure we have a valid stack seg
 	movw	$0x2000,%sp		# ensure room for stack
 	call	testip
 testip:
 	pop	%ax			# %ax = %ip = testip
-	cmpw	$0x100,%ax		
-	jl	move			# running as a bootsector
-	cmpw	$0x200,%ax
-	jg	move			# also running as a bootsector
+	cmpw	$testip+0x100,%ax		
+	jne	move			# running as a bootsector
 	movw	%cs,%ax
 	addw	$0x10,%ax
 	pushw	%ax			# cs
-	pushw	$gocom			# ip
-	cld
-	lret				# running as a com file
+	pushw	$go			# ip
+	lret				# running with new base segment
 
 # First things first. Move ourself from 0x7C00 -> 0x90000 and jump there.
 move:
@@ -47,7 +45,6 @@ move:
 	movw	$256, %cx
 	subw	%si, %si
 	subw	%di, %di
-	cld
 	rep
 	movsw
 	ljmp	$INITSEG, $go
@@ -58,7 +55,6 @@ move:
 # instead of in the vector table.  The old stack might have clobbered the
 # drive table.
 
-gocom:
 go:	movw	$0x4000-12, %di		# 0x4000 is an arbitrary value >=
 					# length of bootsect + length of
 					# setup + room for stack;

@@ -19,5 +19,9 @@ checkvmx.o: checkvmx.s
 checkvmx.s: checkvmx.S Makefile #$(BOOT_INCL)
 	$(CPP) $(CPPFLAGS) -traditional $(SVGA_MODE) $(RAMDISK) $< -o $@
 
+test: qemu
+qemu: checkvmx.com
+	qemu -hda checkvmx.com -monitor stdio -s -S
+
 clean:
 	rm -f checkvmx checkvmx.s checkvmx.o
