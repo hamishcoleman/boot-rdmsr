@@ -10,14 +10,14 @@
 # Copyright (C) 1994 by Linus Torvalds
 #
 
-bootsect: bootsect.o
+checkvmx: checkvmx.o
 	$(LD) -Ttext 0x0 -s --oformat binary -o $@ $<
 
-bootsect.o: bootsect.s
+checkvmx.o: checkvmx.s
 	$(AS) -o $@ $<
 
-bootsect.s: bootsect.S Makefile #$(BOOT_INCL)
+checkvmx.s: checkvmx.S Makefile #$(BOOT_INCL)
 	$(CPP) $(CPPFLAGS) -traditional $(SVGA_MODE) $(RAMDISK) $< -o $@
 
 clean:
-	rm -f bootsect
+	rm -f checkvmx
