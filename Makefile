@@ -10,7 +10,7 @@
 # Copyright (C) 1994 by Linus Torvalds
 #
 
-checkvmx: checkvmx.o
+checkvmx.com: checkvmx.o
 	$(LD) -Ttext 0x0 -s --oformat binary -o $@ $<
 
 checkvmx.o: checkvmx.s
@@ -20,4 +20,4 @@ checkvmx.s: checkvmx.S Makefile #$(BOOT_INCL)
 	$(CPP) $(CPPFLAGS) -traditional $(SVGA_MODE) $(RAMDISK) $< -o $@
 
 clean:
-	rm -f checkvmx
+	rm -f checkvmx checkvmx.s checkvmx.o
