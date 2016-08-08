@@ -21,7 +21,7 @@ checkvmx.s: checkvmx.S Makefile #$(BOOT_INCL)
 
 test: qemu
 qemu: checkvmx.com
-	qemu -hda checkvmx.com -monitor stdio -s -S
+	qemu-system-x86_64 -hda checkvmx.com -monitor stdio -s -S
 
 clean:
 	rm -f checkvmx checkvmx.s checkvmx.o
