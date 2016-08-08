@@ -14,7 +14,7 @@
 #include <asm/boot.h>
 
 BOOTSEG		= 0x07C0		/* original address of boot-sector */
-INITSEG		= DEF_INITSEG		/* we move boot here - out of the way */
+INITSEG		= 0x9000		/* we move boot here - out of the way */
 
 .code16
 .text
